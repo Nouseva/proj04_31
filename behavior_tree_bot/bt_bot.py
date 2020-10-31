@@ -37,7 +37,7 @@ def setup_behavior_tree():
 
     marshal_forces = Action(consolidate_ships)
 
-    root.child_nodes = [offensive_plan, marshal_forces.copy(), spread_sequence, attack.copy()]
+    root.child_nodes = [offensive_plan, spread_sequence, marshal_forces.copy(), attack.copy()]
 
     logging.info('\n' + root.tree_to_string())
     return root
@@ -45,6 +45,9 @@ def setup_behavior_tree():
 # You don't need to change this function
 def do_turn(state):
     behavior_tree.execute(planet_wars)
+    pln = sorted(state.my_planets(), key=lambda t: t.growth_rate)
+    if pln:
+        logging.info('\n %s', pln)
 
 if __name__ == '__main__':
     logging.basicConfig(filename=__file__[:-3] + '.log', filemode='w', level=logging.DEBUG)

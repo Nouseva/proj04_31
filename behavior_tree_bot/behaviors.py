@@ -59,8 +59,8 @@ def consolidate_ships(state):
     if len(player_planets) < 2:
         return False
 
-    player_home = player_planets[0]
-    player_planets = player_planets[1::-1]
+    player_home = player_planets[-1]
+    player_planets = player_planets[:-1]
 
     # Check all non-home owned planets for spare ships starting with the lowest tier
     for planet in player_planets:
