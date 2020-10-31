@@ -129,3 +129,4 @@ dmypy.json
 *.swp
 *.swo
 src/results*
+log*.txt

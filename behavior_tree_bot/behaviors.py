@@ -42,5 +42,32 @@ def spread_to_weakest_neutral_planet(state):
 
 
 def consolidate_ships(state):
+    """
+        Gathers ships from lower tier planets to higher tier planets
 
+        Tries to keep a base level defense proportional to planet tier
+    """
+
+    # Keep a base of X times the planet's production in ships
+    modifier_planet_defense = 10
+    # X times the planet's production is an excess of ships
+    modifier_planet_spares  = 15
+
+    # Check we have more than one fleet to consider
+    player_planets = sorted(state.my_planets(), key=lambda t: t.growth_rate)
+
+    if len(player_planets) < 2:
+        return False
+
+    player_home = player_planets[0]
+    player_planets = player_planets[1::-1]
+
+    # Check all non-home owned planets for spare ships starting with the lowest tier
+    for planet in player_planets:
+        if (planet.growth_rate * modifier_planet_spares) < planet.num_ships:
+            transfer_size = planet.num_ships - (planet.growth_rate * modifier_planet_defense)
+
+            return issue_order(state, planet.ID, player_home.ID, transfer_size)
+
+    # No planet has spare ships
     return False
