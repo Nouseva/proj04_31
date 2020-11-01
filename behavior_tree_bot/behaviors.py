@@ -71,3 +71,47 @@ def consolidate_ships(state):
 
     # No planet has spare ships
     return False
+
+
+def capture_neighbors(state):
+    """
+        Focus on securing close planets
+
+    """
+
+    # Distance is how far from home_planet to consider
+    modifier_neighbor_distance   = 20
+    # How much are more productive planets valued; how much more is a 2-ship planet prefered over a 1-ship
+    modifier_neighbor_production = 2
+
+    # How much to consider a planet's defense
+    # A higher value means that we need to outnumber them by more before considering
+    modifier_neighbor_defense    = 1.1
+
+    home_planet = max(state.my_planets(), key=lambda t: t.growth_rate)
+
+    # Calculates how many ships will encountered by a friendly fleet departing from source at destination
+    def expected_fleet(source, destination):
+        travel_time = state.distance(source.ID, destination.ID)
+        return (destination.num_ships + (destination.growth_rate * travel_time)) * modifier_neighbor_defense
+
+    def planet_val(planet):
+        # Can it be captured with our fleet?
+        if (modifier_neighbor_defense * planet.num_ships) > home_planet.num_ships:
+            return -1
+
+        # Larger distances, less desireable
+        dist_val = modifier_neighbor_distance / state.distance(home_planet.ID, planet.ID)
+        prod_val = modifier_neighbor_production * planet.growth_rate
+
+        # Defense of planets when ships would arrive at location
+        defs_val = home_planet.num_ships / expected_fleet(home_planet, planet)
+
+        return (dist_val + prod_val + defs_val)
+    # list of neighbors sorted by decreasing planet value
+    neighbor_planets = sorted(state.not_my_planets(), key=lambda t: planet_val(t), reverse=True)
+
+    for neighbor in neighbor_planets:
+        return issue_order(state, home_planet.ID, neighbor.ID, expected_fleet(home_planet, neighbor))
+
+    return False

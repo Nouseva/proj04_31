@@ -35,9 +35,12 @@ def setup_behavior_tree():
     spread_action = Action(spread_to_weakest_neutral_planet)
     spread_sequence.child_nodes = [neutral_planet_check, spread_action]
 
+    build_economy = Selector(name='Colonizaition Strategy')
     marshal_forces = Action(consolidate_ships)
+    deploy_forces = Action(capture_neighbors)
+    build_economy.child_nodes = [marshal_forces, deploy_forces]
 
-    root.child_nodes = [offensive_plan, spread_sequence, marshal_forces.copy(), attack.copy()]
+    root.child_nodes = [offensive_plan, spread_sequence, build_economy, attack.copy()]
 
     logging.info('\n' + root.tree_to_string())
     return root
