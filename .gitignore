@@ -130,4 +130,3 @@ dmypy.json
 *.swo
 src/results*
 log*.txt
-log.txt

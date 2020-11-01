@@ -38,7 +38,7 @@ def setup_behavior_tree():
     build_economy = Selector(name='Colonizaition Strategy')
     marshal_forces = Action(consolidate_ships)
     deploy_forces = Action(capture_neighbors)
-    build_economy.child_nodes = [marshal_forces, deploy_forces]
+    build_economy.child_nodes = [deploy_forces, marshal_forces]
 
     root.child_nodes = [offensive_plan, spread_sequence, build_economy, attack.copy()]
 
@@ -51,6 +51,8 @@ def do_turn(state):
     pln = sorted(state.my_planets(), key=lambda t: t.growth_rate)
     if pln:
         logging.info('\n %s', pln)
+    if state.my_fleets():
+        logging.info('\n %s', state.my_fleets())
 
 if __name__ == '__main__':
     logging.basicConfig(filename=__file__[:-3] + '.log', filemode='w', level=logging.DEBUG)

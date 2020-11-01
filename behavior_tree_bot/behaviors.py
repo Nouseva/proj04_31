@@ -88,7 +88,10 @@ def capture_neighbors(state):
     # A higher value means that we need to outnumber them by more before considering
     modifier_neighbor_defense    = 1.1
 
-    home_planet = max(state.my_planets(), key=lambda t: t.growth_rate)
+    home_planet = max(state.my_planets(), key=lambda t: t.num_ships)
+
+    # Check for any fleets that are already capturing
+    targeted_planets = set( [ fleet.destination_planet for fleet in state.my_fleets() ] )
 
     # Calculates how many ships will encountered by a friendly fleet departing from source at destination
     def expected_fleet(source, destination):
@@ -112,6 +115,7 @@ def capture_neighbors(state):
     neighbor_planets = sorted(state.not_my_planets(), key=lambda t: planet_val(t), reverse=True)
 
     for neighbor in neighbor_planets:
-        return issue_order(state, home_planet.ID, neighbor.ID, expected_fleet(home_planet, neighbor))
+        if neighbor.ID not in targeted_planets:
+            return issue_order(state, home_planet.ID, neighbor.ID, expected_fleet(home_planet, neighbor))
 
     return False
