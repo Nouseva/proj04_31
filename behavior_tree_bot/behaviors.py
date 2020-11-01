@@ -2,6 +2,8 @@ import sys
 sys.path.insert(0, '../')
 from planet_wars import issue_order
 
+from math import ceil
+
 
 def attack_weakest_enemy_planet(state):
     # (1) If we currently have a fleet in flight, abort plan.
@@ -49,9 +51,9 @@ def consolidate_ships(state):
     """
 
     # Keep a base of X times the planet's production in ships
-    modifier_planet_defense = 10
+    modifier_planet_defense = 15
     # X times the planet's production is an excess of ships
-    modifier_planet_spares  = 15
+    modifier_planet_spares  = 20
 
     # Check we have more than one fleet to consider
     player_planets = sorted(state.my_planets(), key=lambda t: t.growth_rate)
@@ -62,9 +64,12 @@ def consolidate_ships(state):
     player_home = player_planets[-1]
     player_planets = player_planets[:-1]
 
+    # If a planet has an enemy fleet attacking it, then keep ships on planet
+    planets_under_attack = set( [fleet.destination_planet for fleet in state.enemy_fleets() ] )
+
     # Check all non-home owned planets for spare ships starting with the lowest tier
     for planet in player_planets:
-        if (planet.growth_rate * modifier_planet_spares) < planet.num_ships:
+        if planet.ID not in planets_under_attack and (planet.growth_rate * modifier_planet_spares) < planet.num_ships:
             transfer_size = planet.num_ships - (planet.growth_rate * modifier_planet_defense)
 
             return issue_order(state, planet.ID, player_home.ID, transfer_size)
@@ -88,15 +93,13 @@ def capture_neighbors(state):
     # A higher value means that we need to outnumber them by more before considering
     modifier_neighbor_defense    = 1.1
 
+    # How much more to prioritize planets that are owned by an enemy
+    modifier_neighbor_enemy      = 1.3
+
     home_planet = max(state.my_planets(), key=lambda t: t.num_ships)
 
     # Check for any fleets that are already capturing
     targeted_planets = set( [ fleet.destination_planet for fleet in state.my_fleets() ] )
-
-    # Calculates how many ships will encountered by a friendly fleet departing from source at destination
-    def expected_fleet(source, destination):
-        travel_time = state.distance(source.ID, destination.ID)
-        return (destination.num_ships + (destination.growth_rate * travel_time)) * modifier_neighbor_defense
 
     def planet_val(planet):
         # Can it be captured with our fleet?
@@ -108,14 +111,73 @@ def capture_neighbors(state):
         prod_val = modifier_neighbor_production * planet.growth_rate
 
         # Defense of planets when ships would arrive at location
-        defs_val = home_planet.num_ships / expected_fleet(home_planet, planet)
+        defs_val = home_planet.num_ships / (expected_fleet(state, home_planet, planet) * modifier_neighbor_defense)
 
-        return (dist_val + prod_val + defs_val)
+        # TODO: maybe some logic to perfer enemies that are weaker/stronger?
+        enem_val = modifier_neighbor_enemy
+
+        return (dist_val + prod_val + defs_val + enem_val)
     # list of neighbors sorted by decreasing planet value
     neighbor_planets = sorted(state.not_my_planets(), key=lambda t: planet_val(t), reverse=True)
 
     for neighbor in neighbor_planets:
         if neighbor.ID not in targeted_planets:
-            return issue_order(state, home_planet.ID, neighbor.ID, expected_fleet(home_planet, neighbor))
+            return issue_order(state, home_planet.ID, neighbor.ID,
+                    expected_fleet(state, home_planet, neighbor) + ceil(state.distance(home_planet.ID, neighbor.ID)))
 
     return False
+
+def coup_de_grace(state):
+    """
+        Finish enemy when they are left with a single planet
+
+    """
+    enemy_planet = any(state.enemy_planets())
+
+    # (1) If enemy has planet, then attack with neighbors
+    if enemy_planet:
+        local_friendlies = sorted(state.my_planets(), key=lambda t: state.distance(enemy_planet.ID, t.ID))
+        for local in local_friendlies:
+            # keep back as many ships as it would take to repel that planet attacking back
+            garrison = expected_fleet(state, enemy_planet, local) + 1
+            if local.num_ships - garrison > expected_fleet(state, local, enemy_planet) + 1:
+                return issue_order(state, local.ID, enemy_planet.ID, local.num_ships - garrison)
+
+        # No local planet can attack safely
+        return False
+
+    # (2) If enemy has no planet, check for their fleets, reinforce planets being targeted
+
+    enemy_fleets = sorted(state.enemy_fleets(), key=lambda f: f.num_ships, reverse=True)
+    if enemy_fleets:
+        enemy_targets = set([ f.destination_planets for f in enemy_fleets ])
+
+        for fleet in enemy_fleets:
+            target_planet = state.planets[fleet.destination_planet]
+            # Check if target will survive
+            target_defence = target_planet.num_ships + (target_planet.growth_rate * fleet.turns_remaining)
+            if target_defence >= fleet.num_ships:
+                continue
+
+            # Target will fall, so send support
+            local_friendlies = sorted(state.my_planets(), key=lambda f: state.distance(target_planet.ID, t.ID), reverse=True)
+            # remove target from list
+            local_friendlies = local_friendlies[1:]
+
+            for local in local_friendlies:
+                if local.ID not in enemy_targets:
+                    return issue_order(state, local.ID, target_planet.ID, local.num_ships -1)
+
+    # No planets will be lost
+    return False
+
+#### HELPER FUNCTIONS ####
+
+# Calculates how many ships will encountered by a friendly fleet departing from source at destination
+def expected_fleet(state, source, destination):
+    # Only captured planets will grow in strength
+    travel_growth = 0
+    if destination.owner != 0:
+        travel_growth = state.distance(source.ID, destination.ID) * destination.growth_rate
+
+    return (destination.num_ships + travel_growth)

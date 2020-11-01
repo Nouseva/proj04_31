@@ -43,6 +43,26 @@ class Composite(Node):
                 string += '| ' * (indent + 1) + str(child) + '\n'
         return string
 
+"""
+class Decorator(Node):
+    def __init(self, child_node=None):
+        self.child_node = child_node
+
+    def execute(self, state):
+        raise NotImplementedError
+
+    def __str__(self):
+        return self.__class__.__name__ + ':'
+
+    def tree_to_string(self, indent=0):
+        string = '| ' * indent + str(self) + '\n'
+        for child in self.child_nodes:
+            if hasattr(child, 'tree_to_string'):
+                string += child.tree_to_string(indent + 1)
+            else:
+                string += '| ' * (indent + 1) + str(child) + '\n'
+        return string
+"""
 
 ############################### Composite Nodes ##################################
 class Selector(Composite):
@@ -90,3 +110,14 @@ class Action(Node):
 
     def __str__(self):
         return self.__class__.__name__ + ': ' + self.action_function.__name__
+
+"""
+############################### Decorator Nodes ##################################
+class AlwaysSucceed(Decorator):
+    @log_execution
+    def execute(self, state):
+        child_node.execute(state)
+        # Return success regardless of child_node result
+        return True
+
+"""

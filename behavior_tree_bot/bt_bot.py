@@ -40,13 +40,21 @@ def setup_behavior_tree():
     deploy_forces = Action(capture_neighbors)
     build_economy.child_nodes = [deploy_forces, marshal_forces]
 
-    root.child_nodes = [offensive_plan, spread_sequence, build_economy, attack.copy()]
+    destroy_enemy = Sequence(name='Finisher Strategy')
+    last_enemy_check = Check(is_final_enemy_base)
+    #kill_action = AlwaysSucceed(Action(coup_de_grace))
+    kill_action = Action(coup_de_grace)
+    logging.info('\n %s', kill_action)
+    destroy_enemy.child_nodes = [last_enemy_check, kill_action]
+
+    root.child_nodes = [ offensive_plan, spread_sequence, build_economy, attack.copy()]
 
     logging.info('\n' + root.tree_to_string())
     return root
 
 # You don't need to change this function
 def do_turn(state):
+    logging.info('building tree')
     behavior_tree.execute(planet_wars)
     pln = sorted(state.my_planets(), key=lambda t: t.growth_rate)
     if pln:
