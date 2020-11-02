@@ -91,15 +91,23 @@ def capture_neighbors(state):
 
     # How much to consider a planet's defense
     # A higher value means that we need to outnumber them by more before considering
-    modifier_neighbor_defense    = 1.1
+    modifier_neighbor_defense    = 1.3
 
     # How much more to prioritize planets that are owned by an enemy
     modifier_neighbor_enemy      = 1.3
 
     home_planet = max(state.my_planets(), key=lambda t: t.num_ships)
 
+    if not home_planet:
+        return False
+
+
     # Check for any fleets that are already capturing
     targeted_planets = set( [ fleet.destination_planet for fleet in state.my_fleets() ] )
+    enemy_targeted_planets = set( [ fleet.destination_planet for fleet in state.enemy_fleets() ] )
+    if enemy_targeted_planets:
+        targeted_planets = targeted_planets | enemy_targeted_planets
+
 
     def planet_val(planet):
         # Can it be captured with our fleet?
@@ -117,13 +125,22 @@ def capture_neighbors(state):
         enem_val = modifier_neighbor_enemy
 
         return (dist_val + prod_val + defs_val + enem_val)
+
     # list of neighbors sorted by decreasing planet value
-    neighbor_planets = sorted(state.not_my_planets(), key=lambda t: planet_val(t), reverse=True)
+    neighbor_planets = [ planet for planet in state.not_my_planets() if planet.ID not in targeted_planets ]
+    neighbor_planets = sorted(neighbor_planets, key=lambda t: planet_val(t), reverse=True)
 
     for neighbor in neighbor_planets:
-        if neighbor.ID not in targeted_planets:
-            return issue_order(state, home_planet.ID, neighbor.ID,
-                    expected_fleet(state, home_planet, neighbor) + ceil(state.distance(home_planet.ID, neighbor.ID)))
+        garrison = 0
+        required_fleet = expected_fleet(state, home_planet, neighbor) + ceil(state.distance(home_planet.ID, neighbor.ID))
+
+        if enemy_targeted_planets and home_planet.ID in enemy_targeted_planets:
+            garrison = sum([ fleet.num_ships for fleet in state.enemy_fleets() if fleet.destination_planet == home_planet.ID ])
+
+        if home_planet.num_ships > required_fleet + garrison:
+            return issue_order(state, home_planet.ID, neighbor.ID, required_fleet)
+        else:
+            return False
 
     return False
 

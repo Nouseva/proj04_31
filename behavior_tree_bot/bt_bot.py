@@ -22,6 +22,7 @@ from planet_wars import PlanetWars, finish_turn
 # of winning against all the 5 opponent bots
 def setup_behavior_tree():
 
+    # logging.info('starting building tree')
     # Top-down construction of behavior tree
     root = Selector(name='High Level Ordering of Strategies')
 
@@ -44,10 +45,10 @@ def setup_behavior_tree():
     last_enemy_check = Check(is_final_enemy_base)
     #kill_action = AlwaysSucceed(Action(coup_de_grace))
     kill_action = Action(coup_de_grace)
-    logging.info('\n %s', kill_action)
+    #logging.info('\n %s', kill_action)
     destroy_enemy.child_nodes = [last_enemy_check, kill_action]
 
-    root.child_nodes = [ offensive_plan, spread_sequence, build_economy, attack.copy()]
+    root.child_nodes = [destroy_enemy, offensive_plan, build_economy]
 
     logging.info('\n' + root.tree_to_string())
     return root
@@ -56,11 +57,11 @@ def setup_behavior_tree():
 def do_turn(state):
     logging.info('building tree')
     behavior_tree.execute(planet_wars)
-    pln = sorted(state.my_planets(), key=lambda t: t.growth_rate)
-    if pln:
-        logging.info('\n %s', pln)
-    if state.my_fleets():
-        logging.info('\n %s', state.my_fleets())
+    # pln = sorted(state.my_planets(), key=lambda t: t.growth_rate)
+    # if pln:
+    #     logging.info('\n %s', pln)
+    # if state.my_fleets():
+    #     logging.info('\n %s', state.my_fleets())
 
 if __name__ == '__main__':
     logging.basicConfig(filename=__file__[:-3] + '.log', filemode='w', level=logging.DEBUG)
